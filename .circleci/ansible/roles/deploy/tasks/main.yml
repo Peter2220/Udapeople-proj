@@ -1,0 +1,23 @@
+---
+
+- name: "Copy files from CircleCI to the server"
+  copy:
+    src: /root/project/backend
+    dest: /home/ubuntu
+
+- name: "Install dependencies"
+  shell: |
+    cd /home/ubuntu/backend    
+    npm install
+    
+- name: "build package"
+  become: true
+  shell: |
+    cd /home/ubuntu/backend
+    npm run build
+
+- name: run server
+  become: true
+  shell: |
+    cd /home/ubuntu/backend
+    pm2 start npm -- run "start:dev"
