@@ -319,6 +319,7 @@ jobs:
           name: Deploy backend
           no_output_timeout: 15m
           command: |
+            cd backend
             echo ENVIROMENT=development > "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
             echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
@@ -330,7 +331,7 @@ jobs:
             echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
             
-            ls -la backend
+            ls -la
             cd .circleci/ansible
             ansible-playbook -i inventory.txt deploy-backend.yml
 
