@@ -4,11 +4,6 @@
     path: /home/ubuntu/backend
     state: directory
 
-- name: "Copy files from CircleCI to the server"
-  copy:
-    src: /root/project/backend
-    dest: /home/ubuntu
-
 - name: "Install dependencies"
   shell: |
     cd /home/ubuntu/backend    
@@ -19,11 +14,6 @@
   shell: |
     cd /home/ubuntu/backend
     npm run build
-
-- name: "run migrations again"
-  shell: |
-    cd /home/ubuntu/backend
-    npm run migrations
 
 - name: run server
   become: true
