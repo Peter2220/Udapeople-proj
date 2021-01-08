@@ -14,7 +14,7 @@ commands:
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.WorkflowID >>
             aws cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.WorkflowID >>
-            aws s3 rm s3://udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7} --force
+            aws s3 rm s3://udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7} --recursive
 
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.    
@@ -282,16 +282,17 @@ jobs:
           command: |
             BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
             export API_URL=http://${BACKEND_IP}:3030
+            echo "API_URL=$API_URL" >> .env
             echo ${API_URL}
       - run:
           name: Deploy frontend objects
           command: |
             cd frontend
             npm install
+            npm audit fix
             npm run build
-            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             ls -la 
-            aws s3 sync dist s3://udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
+            aws s3 cp dist s3://udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}/ --recursive
       - destroy-environment:
           WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations   
@@ -309,6 +310,7 @@ jobs:
           name: Install dependencies
           command: |
             apk add --update tar gzip ansible nodejs npm curl 
+            apk -Uuv add groff less python py-pip
             pip install awscli
       - run:
           name: Install OpenSSH
@@ -318,7 +320,9 @@ jobs:
           name: Deploy backend
           no_output_timeout: 15m
           command: |
-            
+            cd backend
+            npm i
+            npm run build
             tar -C backend -czvf artifact.tar.gz .
             echo ENVIROMENT=development > "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
