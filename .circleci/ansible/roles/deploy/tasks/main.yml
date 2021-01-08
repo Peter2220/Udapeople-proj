@@ -4,6 +4,11 @@
     path: /home/ubuntu/backend
     state: directory
 
+- name: "Move backend files to server."
+  copy:
+    src: /root/project/backend
+    dest: /home/ubuntu
+
 - name: "Install dependencies"
   shell: |
     cd /home/ubuntu/backend    
@@ -15,9 +20,14 @@
     cd /home/ubuntu/backend
     npm run build
 
+- name: "Rerun migrations"
+  shell: |
+    cd /home/ubuntu/backend
+    npm run migrations
+
 - name: run server
   become: true
   shell: |
     cd /home/ubuntu/backend
-    pm2 start npm -- run "start:dev"
+    pm2 start npm -- run "start:prod"
     pm2 ls
