@@ -316,7 +316,6 @@ jobs:
           name: Deploy backend
           no_output_timeout: 25m
           command: |
-            tar -C backend -czvf artifact.tar.gz . 
 
             echo ENVIROMENT=production > "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
