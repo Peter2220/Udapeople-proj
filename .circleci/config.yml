@@ -281,16 +281,17 @@ jobs:
           name: Get backend url
           command: |
             BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
-            cd frontend
             export API_URL=http://${BACKEND_IP}:3030
-            echo "API_URL=$API_URL" >> .env
             echo ${API_URL}
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
             npm install
-            npm audit fix
             npm run build
-            ls -la
-            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}/ --recursive
-
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            ls -la 
+            aws s3 sync dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}
       - destroy-environment:
           WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations   
@@ -307,7 +308,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            apk add --update ansible
+            apk add --update tar gzip ansible nodejs npm curl 
             pip install awscli
       - run:
           name: Install OpenSSH
@@ -317,7 +318,8 @@ jobs:
           name: Deploy backend
           no_output_timeout: 15m
           command: |
-
+            
+            tar -C backend -czvf artifact.tar.gz .
             echo ENVIROMENT=development > "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
             echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
@@ -329,6 +331,7 @@ jobs:
             echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
             
+            ls -la backend
             cd .circleci/ansible
             ansible-playbook -i inventory.txt deploy-backend.yml
 
@@ -348,12 +351,14 @@ jobs:
           command: |
             apk add --update curl nodejs npm
             pip install awscli
+
       - run:
           name: Get the URL of Backend and smoke test.
           command: |
             BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
             echo ${BACKEND_IP}
             curl "http://${BACKEND_IP}:3030/api/status"
+            
       - run:
           name: Frontend smoke test.
           command: |
