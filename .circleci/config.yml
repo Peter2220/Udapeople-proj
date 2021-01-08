@@ -277,16 +277,13 @@ jobs:
             sudo apt-get -qq install awscli
 
       - run:
-          name: Get backend url
+          name: Deploy frontend objects
           command: |
             BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
+            cd frontend
             export API_URL=http://${BACKEND_IP}:3030
             echo "API_URL=$API_URL" >> .env
             echo ${API_URL}
-      - run:
-          name: Deploy frontend objects
-          command: |
-            cd frontend
             npm install
             npm audit fix
             npm run build
@@ -317,10 +314,11 @@ jobs:
             apk add openssh-client
       - run:
           name: Deploy backend
-          no_output_timeout: 15m
+          no_output_timeout: 25m
           command: |
-            cd backend
-            echo ENVIROMENT=development > "backend/.env"
+            tar -C backend -czvf artifact.tar.gz . 
+
+            echo ENVIROMENT=production > "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
             echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
             echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
@@ -330,11 +328,9 @@ jobs:
             echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
             echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
-            
             ls -la
             cd .circleci/ansible
             ansible-playbook -i inventory.txt deploy-backend.yml
-
           environment:
             ANSIBLE_HOST_KEY_CHECKING: false
       - destroy-environment:
