@@ -275,15 +275,17 @@ jobs:
             sudo apt-get -y -qq update
             sudo apt-get -y -qq install python3
             sudo apt-get -qq install awscli
-
       - run:
-          name: Deploy frontend objects
+          name: Get backend url
           command: |
             BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
-            cd frontend
             export API_URL=http://${BACKEND_IP}:3030
             echo "API_URL=$API_URL" >> .env
             echo ${API_URL}
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
             npm install
             npm audit fix
             npm run build
