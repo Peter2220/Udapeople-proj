@@ -1,5 +1,6 @@
 ---
 - name: "Move backend files to server."
+  become: true
   copy:
     src: /root/project/backend
     dest: /home/ubuntu
