@@ -1,4 +1,8 @@
 ---
+- name: Creates directory
+  file:
+    path: /home/ubuntu/backend
+    state: directory
 
 - name: "Move backend files to remote server."
   become: true
