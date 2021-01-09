@@ -14,7 +14,7 @@ commands:
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.WorkflowID >>
             aws cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.WorkflowID >>
-            aws s3 rb s3://udapeople-123lr --force
+            aws s3 rb s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --force
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.    
     steps:
@@ -146,17 +146,19 @@ jobs:
               --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
               --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
       
-      - run:   
+      - run: 
           name: Store Backend URL in Memstash
           command: |
-            BACKEND_URL=$(aws ec2 describe-instances --region ${AWS_DEFAULT_REGION} --filters 'Name=tag:Name,Values=udapeople-backend*' --query "Reservations[*].Instances[0].PublicDnsName" --output text)
-            echo "BACKEND URL:"
-            echo ${BACKEND_URL}
+            BACKEND_IP=$(aws ec2 describe-instances \
+              --query 'Reservations[*].Instances[*].PublicIpAddress' \
+              --filters "Name=tag:Name,Values=udapeople-backend-ec2-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --output text)
+            echo "BACKEND IP:"
+            echo ${BACKEND_IP}
             curl -H "Content-Type: text/plain" \
                -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" \
                --request PUT \
-               --data ${BACKEND_URL} https://api.memstash.io/values/backend_url
-
+               --data ${BACKEND_IP} https://api.memstash.io/values/backendip
       - run:
           name: Ensure frontend infrastructure exist
           command: |
@@ -171,16 +173,16 @@ jobs:
           command: |
             yum install tar -y
             yum install gzip -y 
-            BACKEND_URL=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backend_url)
+            BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
             cd .circleci/ansible/
             echo "[web]" > ./inventory.txt
-            echo ${BACKEND_URL} >> ./inventory.txt
+            echo ${BACKEND_IP} >> ./inventory.txt
             cat ./inventory.txt
 
       - persist_to_workspace:
           root: ~/
           paths:
-            - project/.circleci/ansible/inventory.txt
+            - project
       # Here's where you will add some code to rollback on failure  
       - destroy-environment:
           WorkflowID: "${CIRCLE_WORKFLOW_ID:0:7}"   
@@ -290,7 +292,7 @@ jobs:
             npm audit fix
             npm run build
             ls -la 
-            aws s3 cp dist s3://udapeople-123lr/ --recursive
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}/ --recursive
       - destroy-environment:
           WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations   
