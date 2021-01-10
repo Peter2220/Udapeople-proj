@@ -441,11 +441,11 @@ workflows:
       # - run-migrations:
       #     requires: [configure-infrastructure]
       - deploy-frontend:
-          requires: [build-frontend, test-frontend, scan-frontend]
+          requires: [build-frontend, test-frontend, scan-frontend, deploy-infrastructure]
       # - deploy-backend:
       #     requires: [run-migrations]
       - smoke-test:
-         requires: [deploy-frontend]
+         requires: [build-frontend, test-frontend, scan-frontend, deploy-infrastructure, deploy-frontend]
       # - cloudfront-update:
       #     requires: [smoke-test]
 
