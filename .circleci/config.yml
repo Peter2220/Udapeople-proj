@@ -138,28 +138,28 @@ jobs:
       - image: amazon/aws-cli
     steps:
       - checkout
-      # - run:
-      #     name: Ensure backend infrastructure exists
-      #     command: |
-      #       aws cloudformation deploy \
-      #         --template-file .circleci/files/backend.yml \
-      #         --tags project=Udapeople \
-      #         --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-      #         --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
+      - run:
+          name: Ensure backend infrastructure exists
+          command: |
+            aws cloudformation deploy \
+              --template-file .circleci/files/backend.yml \
+              --tags project=Udapeople \
+              --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
       
-      # - run: 
-      #     name: Store Backend URL in Memstash
-      #     command: |
-      #       BACKEND_IP=$(aws ec2 describe-instances \
-      #         --query 'Reservations[*].Instances[*].PublicIpAddress' \
-      #         --filters "Name=tag:Name,Values=udapeople-backend-ec2-${CIRCLE_WORKFLOW_ID:0:7}" \
-      #         --output text)
-      #       echo "BACKEND IP:"
-      #       echo ${BACKEND_IP}
-      #       curl -H "Content-Type: text/plain" \
-      #          -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" \
-      #          --request PUT \
-      #          --data ${BACKEND_IP} https://api.memstash.io/values/backendip
+      - run: 
+          name: Store Backend URL in Memstash
+          command: |
+            BACKEND_IP=$(aws ec2 describe-instances \
+              --query 'Reservations[*].Instances[*].PublicIpAddress' \
+              --filters "Name=tag:Name,Values=udapeople-backend-ec2-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --output text)
+            echo "BACKEND IP:"
+            echo ${BACKEND_IP}
+            curl -H "Content-Type: text/plain" \
+               -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" \
+               --request PUT \
+               --data ${BACKEND_IP} https://api.memstash.io/values/backendip
       - run:
           name: Ensure frontend infrastructure exist
           command: |
@@ -169,16 +169,16 @@ jobs:
               --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
               --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
 
-      # - run:
-      #     name: Add backend ip to ansible inventory
-      #     command: |
-      #       yum install tar -y
-      #       yum install gzip -y 
-      #       BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
-      #       cd .circleci/ansible/
-      #       echo "[web]" > ./inventory.txt
-      #       echo ${BACKEND_IP} >> ./inventory.txt
-      #       cat ./inventory.txt
+      - run:
+          name: Add backend ip to ansible inventory
+          command: |
+            yum install tar -y
+            yum install gzip -y 
+            BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
+            cd .circleci/ansible/
+            echo "[web]" > ./inventory.txt
+            echo ${BACKEND_IP} >> ./inventory.txt
+            cat ./inventory.txt
 
       - persist_to_workspace:
           root: ~/
@@ -280,13 +280,14 @@ jobs:
             sudo apt-get -qq install awscli
       - run:
           name: Deploy frontend objects
-            # BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
-            # cd frontend
-            # export API_URL=http://${BACKEND_IP}:3030
-            # echo "API_URL=$API_URL" >> .env
-            # echo ${API_URL}
+
           command: |
             cd frontend
+            BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
+            cd frontend
+            export API_URL=http://${BACKEND_IP}:3030
+            echo "API_URL=$API_URL" >> .env
+            echo ${API_URL}
             npm install
             npm run build
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
@@ -351,14 +352,14 @@ jobs:
             apk add --update curl nodejs npm
             pip install awscli
 
-      # - run:
-      #     name: Get the URL of Backend and smoke test.
-      #     command: |
-      #       BACKEND_IP=$(aws ec2 describe-instances \
-      #       --filters "Name=tag:Name, Values=udapeople-backend-ec2-${CIRCLE_WORKFLOW_ID:0:7}" \
-      #       --query 'Reservations[*].Instances[*].PublicIpAddress' \
-      #       --output text)
-      #       curl "https://${BACKEND_IP}:3030/api/status"
+      - run:
+          name: Get the URL of Backend and smoke test.
+          command: |
+            BACKEND_IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name, Values=udapeople-backend-ec2-${CIRCLE_WORKFLOW_ID:0:7}" \
+            --query 'Reservations[*].Instances[*].PublicIpAddress' \
+            --output text)
+            curl "https://${BACKEND_IP}:3030/api/status"
 
       - run:
           name: Frontend smoke test.
@@ -422,60 +423,31 @@ workflows:
   default:
     jobs:
       - build-frontend
-      # - build-backend
+      - build-backend
       - test-frontend:
-           requires: [build-frontend]
-      # - test-backend:
-      #     requires: [build-backend]
-      # - scan-backend:
-      #     requires: [build-backend]
+          requires: [build-frontend]
+      - test-backend:
+          requires: [build-backend]
+      - scan-backend:
+          requires: [build-backend]
       - scan-frontend:
           requires: [build-frontend]
       - deploy-infrastructure:
-          requires: [test-frontend, scan-frontend]
+          requires: [test-frontend, test-backend, scan-frontend, scan-backend]
           filters:
             branches:
               only: [master]
-      # - configure-infrastructure:
-      #     requires: [deploy-infrastructure]
-      # - run-migrations:
-      #     requires: [configure-infrastructure]
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
+      - run-migrations:
+          requires: [configure-infrastructure]
       - deploy-frontend:
-          requires: [build-frontend, test-frontend, scan-frontend, deploy-infrastructure]
-      # - deploy-backend:
-      #     requires: [run-migrations]
+          requires: [run-migrations]
+      - deploy-backend:
+          requires: [run-migrations]
       - smoke-test:
-         requires: [build-frontend, test-frontend, scan-frontend, deploy-infrastructure, deploy-frontend]
-      # - cloudfront-update:
-      #     requires: [smoke-test]
-
-
-      # - build-frontend
-      # - build-backend
-      # - test-frontend:
-      #     requires: [build-frontend]
-      # - test-backend:
-      #     requires: [build-backend]
-      # - scan-backend:
-      #     requires: [build-backend]
-      # - scan-frontend:
-      #     requires: [build-frontend]
-      # - deploy-infrastructure:
-      #     requires: [test-frontend, test-backend, scan-frontend, scan-backend]
-      #     filters:
-      #       branches:
-      #         only: [master]
-      # - configure-infrastructure:
-      #     requires: [deploy-infrastructure]
-      # - run-migrations:
-      #     requires: [configure-infrastructure]
-      # - deploy-frontend:
-      #     requires: [run-migrations]
-      # - deploy-backend:
-      #     requires: [run-migrations]
-      # - smoke-test:
-      #    requires: [deploy-backend, deploy-frontend]
-      # - cloudfront-update:
-      #     requires: [smoke-test]
-      # - cleanup:
-      #     requires: [cloudfront-update]
+         requires: [deploy-backend, deploy-frontend]
+      - cloudfront-update:
+          requires: [smoke-test]
+      - cleanup:
+          requires: [cloudfront-update]
