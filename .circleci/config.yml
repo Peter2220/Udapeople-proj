@@ -280,20 +280,20 @@ jobs:
             sudo apt-get -y -qq install python3
             sudo apt-get -qq install awscli
       - run:
-          name: Get backend url
+          name: Deploy frontend objects
           command: |
-            cd frontend
             BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
+            cd frontend
             export API_URL=http://${BACKEND_IP}:3030
             echo "API_URL=$API_URL" >> .env
             echo ${API_URL}
             npm install
+            npm audit fix
             npm run build
-      - run:
-          name: Deploy frontend objects
-          command: |
-            ls -la
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            ls -la 
             aws s3 cp dist s3://udapeople-123lr/ --recursive
+
       # - destroy-environment:
       #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
       #- revert-migrations   
