@@ -255,8 +255,6 @@ jobs:
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> ".env"
 
             npm install
-            npm audit fix
-            npm run build
             npm run migrations > migration_${CIRCLE_WORKFLOW_ID:0:7}.txt
             cat migration_${CIRCLE_WORKFLOW_ID:0:7}.txt
 
