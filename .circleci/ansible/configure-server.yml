@@ -8,7 +8,7 @@
     - ansible_python_interpreter: /usr/bin/python3
     - ansible_host_key_checking: false
     - ansible_stdout_callback: yaml
-    - ENVIRONMENT: "production"
+    - ENVIRONMENT: "{{ lookup('env','ENVIRONMENT') }}"
     - TYPEORM_MIGRATIONS: "./src/migrations/*.ts"
     - TYPEORM_MIGRATIONS_DIR: "./src/migrations"
     - TYPEORM_CONNECTION: "postgres"
@@ -26,3 +26,4 @@
 
   roles:
     - configure-server
+    - configure-prometheus-node-exporter

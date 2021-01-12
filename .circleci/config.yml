@@ -318,10 +318,9 @@ jobs:
             apk add openssh-client
       - run:
           name: Deploy backend
-          no_output_timeout: 25m
+          no_output_timeout: 30m
           command: |
-
-            echo ENVIROMENT=development > "backend/.env"
+            echo ENVIRONMENT=production >> "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
             echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
             echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
@@ -331,6 +330,7 @@ jobs:
             echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
             echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
+            tar -C backend -czvf artifact.tar.gz .
             ls -la
             cd .circleci/ansible
             ansible-playbook -i inventory.txt deploy-backend.yml
