@@ -13,6 +13,9 @@ commands:
           when: on_fail
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.WorkflowID >>
+            aws cloudformation delete-stack --stack-name udapeople-frontend-<<parameters.WorkflowID>>
+            aws s3 rb s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --force
+
 #aws cloudformation delete-stack --stack-name udapeople-frontend
 #aws s3 rb s3://udapeople-123lr --force
 
@@ -133,7 +136,6 @@ jobs:
             npm update
             npm audit fix --audit-level=critical --force
 
-
   deploy-infrastructure:
     docker:
       - image: amazon/aws-cli
@@ -160,7 +162,7 @@ jobs:
                -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" \
                --request PUT \
                --data ${BACKEND_IP} https://api.memstash.io/values/backendip
-      # - run:
+      - run:
       #     name: Ensure frontend infrastructure exist
       #  DEAR MR. Reviewer/Mentor/Sir, 
       #  I have a problem while copying dist folder to the S3 bucket. (Did it manually)
@@ -174,12 +176,12 @@ jobs:
 
       #  So I uploaded the frontend.yml file manually(not within/using the config.yml file), assinged the right bucket,
       #  and all files got transferred without any issues.
-      #     command: |
-      #       aws cloudformation deploy \
-      #         --template-file .circleci/files/frontend.yml \
-      #         --tags project=Udapeople \
-      #         --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
-      #         --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
+          command: |
+            aws cloudformation deploy \
+              --template-file .circleci/files/frontend.yml \
+              --tags project=Udapeople \
+              --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
 
       - run:
           name: Add backend ip to ansible inventory
@@ -295,22 +297,21 @@ jobs:
       - run:
           name: Deploy frontend objects
           command: |
-
+            BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
             cd frontend
-
+            export API_URL=http://${BACKEND_IP}:3030
+            echo "API_URL=$API_URL" >> .env
+            echo ${API_URL}
             npm install
             npm run build
             ls -la 
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             ls -la 
-            aws s3 sync dist s3://udapeople-123lr/
-            # BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
-            # export API_URL=http://${BACKEND_IP}:3030
-            # echo "API_URL=$API_URL" >> .env
-            # echo ${API_URL}
-      # - destroy-environment:
-      #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
-      # - revert-migrations   
+            aws s3 sync dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}/
+            BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
+      - destroy-environment:
+          WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations   
                     
   deploy-backend:
     docker:
@@ -374,7 +375,7 @@ jobs:
       - run:
           name: Frontend smoke test.
           command: |
-            URL="http://udapeople-123lr.s3.us-west-1.amazonaws.com/index.html#/employees"
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3.us-west-1.amazonaws.com/index.html#/employees"
             if curl -s ${URL} | grep "Welcome"
             then
               return 1
@@ -410,7 +411,7 @@ jobs:
             if [ -n "${OLD_CIRCLE_WORKFLOW_ID:0:7}" ] && [[ "${STACKS[@]}" =~ "${OLD_CIRCLE_WORKFLOW_ID:0:7}" ]]
             then
               echo "deleting stacks of ${OLD_CIRCLE_WORKFLOW_ID:0:7}"
-              aws s3 rm s3://udapeople-123lr/ --recursive
+              aws s3 rm s3://udapeople-${OLD_CIRCLE_WORKFLOW_ID:0:7}/ --recursive
               aws cloudformation delete-stack --stack-name udapeople-frontend
               aws cloudformation delete-stack --stack-name udapeople-backend-${OLD_CIRCLE_WORKFLOW_ID:0:7}
             fi
@@ -423,30 +424,30 @@ jobs:
 workflows:
   default:
     jobs:
-      # - build-frontend
-      # - build-backend
-      # - test-frontend:
-      #     requires: [build-frontend]
-      # - test-backend:
-      #     requires: [build-backend]
-      # - scan-backend:
-      #     requires: [build-backend]
-      # - scan-frontend:
-      #     requires: [build-frontend]
-      # - deploy-infrastructure:
-          # requires: [test-frontend, test-backend, scan-frontend, scan-backend]
-      #     filters:
-      #       branches:
-      #         only: [master]
-      # - configure-infrastructure:
-      #     requires: [deploy-infrastructure]
-      # - run-migrations:
-      #     requires: [configure-infrastructure]
-      - deploy-frontend
-      #requires: [run-migrations]
-      # - deploy-backend:
-      #     requires: [run-migrations]
-      # - smoke-test:
-      #    requires: [deploy-backend, deploy-frontend]
-      # - cfront-upd-and-clean:
-      #     requires: [smoke-test]
+      - build-frontend
+      - build-backend
+      - test-frontend:
+          requires: [build-frontend]
+      - test-backend:
+          requires: [build-backend]
+      - scan-backend:
+          requires: [build-backend]
+      - scan-frontend:
+          requires: [build-frontend]
+      - deploy-infrastructure:
+          requires: [test-frontend, test-backend, scan-frontend, scan-backend]
+          filters:
+            branches:
+              only: [master]
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
+      - run-migrations:
+          requires: [configure-infrastructure]
+      - deploy-frontend:
+          requires: [run-migrations]
+      - deploy-backend:
+          requires: [run-migrations]
+      - smoke-test:
+         requires: [deploy-backend, deploy-frontend]
+      - cfront-upd-and-clean:
+          requires: [smoke-test]
