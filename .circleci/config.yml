@@ -304,7 +304,7 @@ jobs:
             ls -la 
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             ls -la 
-            aws s3 cp artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz s3://udapeople-123lr/artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz | tar -zxvf
+            aws s3 cp artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz s3://udapeople-123lr/artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz | tar -zxv
             # BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
             # export API_URL=http://${BACKEND_IP}:3030
             # echo "API_URL=$API_URL" >> .env
