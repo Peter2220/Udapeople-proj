@@ -291,11 +291,12 @@ jobs:
             npm install
             npm audit fix
             npm run build
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             ls -la 
-            aws s3 sync dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --delete
-      - destroy-environment:
-          WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
-      - revert-migrations   
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}/ --recursive
+      # - destroy-environment:
+      #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
+      # - revert-migrations   
                     
   deploy-backend:
     docker:
@@ -317,7 +318,7 @@ jobs:
             apk add openssh-client
       - run:
           name: Deploy backend
-          no_output_timeout: 20m
+          no_output_timeout: 30m
           command: |
             echo ENVIROMENT=development > "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
@@ -329,6 +330,7 @@ jobs:
             echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
             echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
+            tar -C backend -czvf artifact.tar.gz .
             ls -la
             cd .circleci/ansible
             ansible-playbook -i inventory.txt deploy-backend.yml
