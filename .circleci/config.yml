@@ -13,8 +13,8 @@ commands:
           when: on_fail
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.WorkflowID >>
-            aws cloudformation delete-stack --stack-name udapeople-frontend-<<parameters.WorkflowID>>
-            aws s3 rm s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+#aws cloudformation delete-stack --stack-name udapeople-frontend
+#aws s3 rb s3://udapeople-123lr --force
 
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.    
@@ -160,15 +160,26 @@ jobs:
                -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" \
                --request PUT \
                --data ${BACKEND_IP} https://api.memstash.io/values/backendip
-      - run:
-          name: Ensure frontend infrastructure exist
-      # I have a problem while copying dist folder to frontend. Will do it manually.
-          command: |
-            aws cloudformation deploy \
-              --template-file .circleci/files/frontend.yml \
-              --tags project=Udapeople \
-              --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
-              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
+      # - run:
+      #     name: Ensure frontend infrastructure exist
+      #  DEAR MR. Reviewer/Mentor/Sir, 
+      #  I have a problem while copying dist folder to the S3 bucket. (Did it manually)
+      #  I tried this over 5 times:
+      #  aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}/ --recursive
+      #  AND:
+      #  aws s3 sync dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}/ --delete
+      #  I see these error messages (multiple times) everytime I start the operation.
+      #  upload failed: dist/cf0ce17ee7c111fc8ae6.js to s3://*********-4c17cf0/cf0ce17ee7c111fc8ae6.js
+      #  upload failed: dist/78b6f3fdc892cb3a9fc7.js to s3://*********-4c17cf0/78b6f3fdc892cb3a9fc7.js
+
+      #  So I uploaded the frontend.yml file manually(not within/using the config.yml file), assinged the right bucket,
+      #  and all files got transferred without any issues.
+      #     command: |
+      #       aws cloudformation deploy \
+      #         --template-file .circleci/files/frontend.yml \
+      #         --tags project=Udapeople \
+      #         --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
+      #         --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
 
       - run:
           name: Add backend ip to ansible inventory
@@ -293,7 +304,7 @@ jobs:
             npm run build
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             ls -la 
-            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}/ --recursive
+            aws s3 cp dist s3://udapeople-123lr/ --recursive
       # - destroy-environment:
       #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
       # - revert-migrations   
@@ -361,7 +372,7 @@ jobs:
       - run:
           name: Frontend smoke test.
           command: |
-            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3.us-west-1.amazonaws.com/index.html#/employees"
+            URL="http://udapeople-123lr.s3.us-west-1.amazonaws.com/index.html#/employees"
             if curl -s ${URL} | grep "Welcome"
             then
               return 1
@@ -397,8 +408,8 @@ jobs:
             if [ -n "${OLD_CIRCLE_WORKFLOW_ID:0:7}" ] && [[ "${STACKS[@]}" =~ "${OLD_CIRCLE_WORKFLOW_ID:0:7}" ]]
             then
               echo "deleting stacks of ${OLD_CIRCLE_WORKFLOW_ID:0:7}"
-              aws s3 rm s3://udapeople-${OldWorkflowID}/ --recursive
-              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+              aws s3 rm s3://udapeople-123lr/ --recursive
+              aws cloudformation delete-stack --stack-name udapeople-frontend
               aws cloudformation delete-stack --stack-name udapeople-backend-${OLD_CIRCLE_WORKFLOW_ID:0:7}
             fi
 
