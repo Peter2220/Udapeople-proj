@@ -291,20 +291,24 @@ jobs:
             sudo apt-get -y -qq update
             sudo apt-get -y -qq install python3
             sudo apt-get -qq install awscli
+
       - run:
           name: Deploy frontend objects
           command: |
-            BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
+
             cd frontend
-            export API_URL=http://${BACKEND_IP}:3030
-            echo "API_URL=$API_URL" >> .env
-            echo ${API_URL}
+
             npm install
             npm audit fix
             npm run build
+            ls -la 
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             ls -la 
-            aws s3 cp artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz s3://udapeople-123lr/artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz - | tar -zxvf
+            aws s3 cp artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz s3://udapeople-123lr/artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz | tar -zxvf
+            # BACKEND_IP=$(curl -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" --request GET https://api.memstash.io/values/backendip)
+            # export API_URL=http://${BACKEND_IP}:3030
+            # echo "API_URL=$API_URL" >> .env
+            # echo ${API_URL}
       # - destroy-environment:
       #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
       # - revert-migrations   
@@ -430,20 +434,20 @@ workflows:
       #     requires: [build-backend]
       # - scan-frontend:
       #     requires: [build-frontend]
-      - deploy-infrastructure:
+      # - deploy-infrastructure:
           # requires: [test-frontend, test-backend, scan-frontend, scan-backend]
-          filters:
-            branches:
-              only: [master]
-      - configure-infrastructure:
-          requires: [deploy-infrastructure]
-      - run-migrations:
-          requires: [configure-infrastructure]
-      - deploy-frontend:
-          requires: [run-migrations]
-      - deploy-backend:
-          requires: [run-migrations]
-      - smoke-test:
-         requires: [deploy-backend, deploy-frontend]
-      - cfront-upd-and-clean:
-          requires: [smoke-test]
+      #     filters:
+      #       branches:
+      #         only: [master]
+      # - configure-infrastructure:
+      #     requires: [deploy-infrastructure]
+      # - run-migrations:
+      #     requires: [configure-infrastructure]
+      - deploy-frontend
+      #requires: [run-migrations]
+      # - deploy-backend:
+      #     requires: [run-migrations]
+      # - smoke-test:
+      #    requires: [deploy-backend, deploy-frontend]
+      # - cfront-upd-and-clean:
+      #     requires: [smoke-test]
