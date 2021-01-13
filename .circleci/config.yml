@@ -328,7 +328,7 @@ jobs:
             apk add openssh-client
       - run:
           name: Deploy backend
-          no_output_timeout: 30m
+          no_output_timeout: 20m
           command: |
 
             echo ENVIROMENT=development > "backend/.env"
