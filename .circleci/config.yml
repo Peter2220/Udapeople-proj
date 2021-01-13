@@ -163,7 +163,7 @@ jobs:
                --request PUT \
                --data ${BACKEND_IP} https://api.memstash.io/values/backendip
       - run:
-      #     name: Ensure frontend infrastructure exist
+          name: Ensure frontend infrastructure exist
       #  DEAR MR. Reviewer/Mentor/Sir, 
       #  I have a problem while copying dist folder to the S3 bucket. (Did it manually)
       #  I tried this over 5 times:
