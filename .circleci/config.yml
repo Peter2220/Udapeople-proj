@@ -13,8 +13,8 @@ commands:
           when: on_fail
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.WorkflowID >>
-            aws cloudformation delete-stack --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID}"
-            aws s3 rm s3://udapeople-"${CIRCLE_WORKFLOW_ID:0:7}" --recursive
+            aws cloudformation delete-stack --stack-name udapeople-frontend-<<parameters.WorkflowID>>
+            aws s3 rm s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
 
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.    
@@ -181,7 +181,7 @@ jobs:
             echo ${BACKEND_IP} >> ./inventory.txt
             cat ./inventory.txt
 
-      - persist_to_workspace:
+      - persist_to_workspace: 
           root: ~/
           paths:
             - project
@@ -212,7 +212,7 @@ jobs:
             apk add openssh-client
       - run:
           name: Configure server
-          no_output_timeout: 15m
+          no_output_timeout: 20m
           command: |
             pwd
             cd .circleci/ansible/
@@ -244,17 +244,6 @@ jobs:
           name: Run migrations
           command: |
             cd backend
-            echo ENVIROMENT=development > ".env"
-            echo TYPEORM_CONNECTION=postgres >> ".env"
-            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> ".env"
-            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> ".env"
-            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> "b.env"
-            echo TYPEORM_HOST=$TYPEORM_HOST >> ".env"
-            echo TYPEORM_PORT=$TYPEORM_PORT >> ".env"
-            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> ".env"
-            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> ".env"
-            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> ".env"
-            
             npm install
             npm run migrations > migration_${CIRCLE_WORKFLOW_ID:0:7}.txt
             cat migration_${CIRCLE_WORKFLOW_ID:0:7}.txt
@@ -300,10 +289,10 @@ jobs:
             echo "API_URL=$API_URL" >> .env
             echo ${API_URL}
             npm install
+            npm audit fix
             npm run build
-            cd dist
             ls -la 
-            aws s3 sync . s3://udapeople-"${CIRCLE_WORKFLOW_ID:0:7}" --delete
+            aws s3 sync dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --delete
       - destroy-environment:
           WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations   
