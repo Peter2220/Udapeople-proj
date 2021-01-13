@@ -1,5 +1,5 @@
 ---
-- name: Creates directory
+- name: "Creates directory"
   file:
     path: /home/ubuntu/backend
     state: directory
@@ -20,11 +20,12 @@
   become: true
   shell: |
     cd /home/ubuntu/backend
+    npm audit fix --audit-level=critical --force
     npm run build
 
-- name: run server
+- name: "run server"
   become: true
   shell: |
     cd /home/ubuntu/backend
-    pm2 start npm -- run "start:prod"
+    pm2 start npm -- run "start:dev"
     pm2 ls

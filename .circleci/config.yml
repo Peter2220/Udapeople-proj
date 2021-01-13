@@ -13,8 +13,8 @@ commands:
           when: on_fail
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.WorkflowID >>
-#aws cloudformation delete-stack --stack-name udapeople-frontend
-#aws s3 rb s3://udapeople-123lr --force
+            aws cloudformation delete-stack --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID}"
+            aws s3 rm "s3://udapeople-${CIRCLE_WORKFLOW_ID}" --recursive
 
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.    
@@ -116,6 +116,7 @@ jobs:
           name: Scan frontend
           command: |
             cd frontend
+            npm update
             npm audit fix --audit-level=critical --force
 
   scan-backend:
@@ -129,6 +130,7 @@ jobs:
           name: Analyze backend
           command: |
             cd backend
+            npm update
             npm audit fix --audit-level=critical --force
 
 
@@ -158,15 +160,15 @@ jobs:
                -H "token: ${CIRCLE_WORKFLOW_ID:0:7}" \
                --request PUT \
                --data ${BACKEND_IP} https://api.memstash.io/values/backendip
-      # - run:
-      #     name: Ensure frontend infrastructure exist
+      - run:
+          name: Ensure frontend infrastructure exist
       # I have a problem while copying dist folder to frontend. Will do it manually.
-      #     command: |
-      #       aws cloudformation deploy \
-      #         --template-file .circleci/files/frontend.yml \
-      #         --tags project=Udapeople \
-      #         --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
-      #         --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
+          command: |
+            aws cloudformation deploy \
+              --template-file .circleci/files/frontend.yml \
+              --tags project=Udapeople \
+              --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
 
       - run:
           name: Add backend ip to ansible inventory
@@ -184,8 +186,8 @@ jobs:
           paths:
             - project
       # Here's where you will add some code to rollback on failure  
-      # - destroy-environment:
-      #     WorkflowID: "${CIRCLE_WORKFLOW_ID:0:7}"   
+      - destroy-environment:
+          WorkflowID: "${CIRCLE_WORKFLOW_ID:0:7}"   
 
   configure-infrastructure:
     docker:
@@ -219,8 +221,8 @@ jobs:
       # Here's where you will add some code to rollback on failure      
           environment:
             ANSIBLE_HOST_KEY_CHECKING: false
-      # - destroy-environment:
-      #     WorkflowID: "${CIRCLE_WORKFLOW_ID:0:7}"
+      - destroy-environment:
+          WorkflowID: "${CIRCLE_WORKFLOW_ID:0:7}"
 
 
   run-migrations:
@@ -242,7 +244,17 @@ jobs:
           name: Run migrations
           command: |
             cd backend
-
+            echo ENVIROMENT=development > "backend/.env"
+            echo TYPEORM_CONNECTION=postgres >> "backend/.env"
+            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
+            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
+            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> "backend/.env"
+            echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"
+            echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"
+            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
+            
             npm install
             npm run migrations > migration_${CIRCLE_WORKFLOW_ID:0:7}.txt
             cat migration_${CIRCLE_WORKFLOW_ID:0:7}.txt
@@ -264,9 +276,9 @@ jobs:
             
             echo ${result}
 
-      # - destroy-environment:
-      #     WorkflowID: "${CIRCLE_WORKFLOW_ID:0:7}" 
-      # - revert-migrations     
+      - destroy-environment:
+          WorkflowID: "${CIRCLE_WORKFLOW_ID:0:7}" 
+      - revert-migrations     
 
   deploy-frontend:
     docker:
@@ -288,15 +300,13 @@ jobs:
             echo "API_URL=$API_URL" >> .env
             echo ${API_URL}
             npm install
-            npm audit fix
             npm run build
-            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            cd dist
             ls -la 
-            aws s3 cp dist s3://udapeople-123lr/ --recursive
-
-      # - destroy-environment:
-      #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
-      # - revert-migrations   
+            aws s3 sync . s3://udapeople-"${CIRCLE_WORKFLOW_ID}" --delete
+      - destroy-environment:
+          WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations   
                     
   deploy-backend:
     docker:
@@ -311,7 +321,6 @@ jobs:
           name: Install dependencies
           command: |
             apk add --update tar gzip ansible nodejs npm curl 
-            apk -Uuv add groff less python py-pip
             pip install awscli
       - run:
           name: Install OpenSSH
@@ -321,8 +330,8 @@ jobs:
           name: Deploy backend
           no_output_timeout: 30m
           command: |
-          
-            echo ENVIRONMENT=production >> "backend/.env"
+
+            echo ENVIROMENT=development > "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
             echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
             echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
@@ -332,15 +341,16 @@ jobs:
             echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
             echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
+
             tar -C backend -czvf artifact.tar.gz .
             ls -la
             cd .circleci/ansible
             ansible-playbook -i inventory.txt deploy-backend.yml
           environment:
             ANSIBLE_HOST_KEY_CHECKING: false
-      # - destroy-environment:
-      #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
-      # - revert-migrations
+      - destroy-environment:
+          WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations
 
   smoke-test:
     docker:
@@ -363,16 +373,16 @@ jobs:
       - run:
           name: Frontend smoke test.
           command: |
-            URL="http://udapeople-123lr.s3-website-us-west-1.amazonaws.com"
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID}.s3.us-west-1.amazonaws.com/index.html#/employees"
             if curl -s ${URL} | grep "Welcome"
             then
               return 1
             else
               return 0
             fi
-      # - destroy-environment:
-      #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
-      # - revert-migrations
+      - destroy-environment:
+          WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations
 
   cfront-upd-and-clean:
     docker:
@@ -399,15 +409,15 @@ jobs:
             if [ -n "${OLD_CIRCLE_WORKFLOW_ID:0:7}" ] && [[ "${STACKS[@]}" =~ "${OLD_CIRCLE_WORKFLOW_ID:0:7}" ]]
             then
               echo "deleting stacks of ${OLD_CIRCLE_WORKFLOW_ID:0:7}"
-              aws s3 rm s3://udapeople-123lr/ --recursive
-              aws cloudformation delete-stack --stack-name udapeople-frontend
+              aws s3 rm s3://udapeople-${OldWorkflowID}/ --recursive
+              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
               aws cloudformation delete-stack --stack-name udapeople-backend-${OLD_CIRCLE_WORKFLOW_ID:0:7}
             fi
 
       # Here's where you will add some code to rollback on failure  
-      # - destroy-environment:
-      #     WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
-      # - revert-migrations
+      - destroy-environment:
+          WorkflowID: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations
 
 workflows:
   default:
