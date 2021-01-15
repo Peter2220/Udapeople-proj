@@ -89,8 +89,6 @@ jobs:
           name: Test frontend
           command: |
             cd frontend
-            npm audit fix
-            npm install
             npm run test
                 
   test-backend:
