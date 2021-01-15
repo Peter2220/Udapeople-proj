@@ -72,6 +72,8 @@ jobs:
           command: |
              cd backend
              npm run build
+             npm audit fix
+
       - save_cache:
           paths: [backend/node_modules]
           key: backend-build
@@ -87,6 +89,8 @@ jobs:
           name: Test frontend
           command: |
             cd frontend
+            npm audit fix
+            npm install
             npm run test
                 
   test-backend:
